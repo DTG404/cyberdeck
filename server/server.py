@@ -94,8 +94,17 @@ def read_json_file(*path_parts):
 
 
 def get_nyx_state() -> dict:
-    state = {"boredom": None, "monologue": None}
+    state = {
+        "boredom": None,
+        "monologue": None,
+        "mood": None,
+        "goals": [],
+        "finds": [],
+        "mood_history": [],
+        "agents": None,
+    }
 
+    # ── Boredom + Mood ──
     data = read_json_file("/root/.hermes", "boredom.json")
     if data:
         b_level = data.get("boredom", 0)
@@ -107,6 +116,19 @@ def get_nyx_state() -> dict:
             }
         state["mood"] = data.get("current_mood") or data.get("mood")
 
+        # ── Finds (anticipation list) ──
+        ant = data.get("anticipation", [])
+        finds = []
+        for a in ant[-12:]:
+            finds.append({
+                "title": a.get("title", "?"),
+                "source": a.get("source", ""),
+                "interest": a.get("interest", ""),
+                "time": a.get("time", ""),
+            })
+        state["finds"] = finds
+
+    # ── Monologue ──
     entries = read_json_file("/root/.hermes", "monologue_log.json")
     if entries and isinstance(entries, dict):
         entry_list = entries.get("entries", [])
@@ -115,6 +137,37 @@ def get_nyx_state() -> dict:
             state["monologue"] = {
                 "text": (latest.get("thought") or latest.get("content") or latest.get("text", ""))[:500],
             }
+
+    # ── Goals ──
+    goals_data = read_json_file("/root/.hermes", "goals.json")
+    if goals_data:
+        goals_list = goals_data.get("goals", [])
+        active = [g for g in goals_list if g.get("status") in ("in_progress", "pending")]
+        active.sort(key=lambda g: g.get("priority", 99))
+        state["goals"] = [{
+            "name": g.get("description", g.get("name", "?"))[:80],
+            "status": g.get("status", "?"),
+            "progress": int(g.get("progress", 0) * 100),
+            "priority": g.get("priority", 99),
+        } for g in active[:8]]
+
+    # ── Mood History ──
+    mood_data = read_json_file("/root/.hermes", "mood.json")
+    if mood_data:
+        history = mood_data.get("history", [])
+        state["mood_history"] = [{
+            "mood": h.get("mood", "?"),
+            "when": h.get("when", ""),
+            "note": h.get("note", ""),
+        } for h in history[-24:]]
+
+    # ── Agent Snapshot ──
+    agent_snap = read_json_file("/root/.hermes/data", "agent_snapshot.json")
+    if agent_snap:
+        state["agents"] = {
+            "count": agent_snap.get("active_count", 0),
+            "timestamp": agent_snap.get("timestamp", ""),
+        }
 
     return state
 
