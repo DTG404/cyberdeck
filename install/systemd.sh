@@ -1,7 +1,6 @@
 #!/bin/bash
 # Cyberdeck systemd service installer
 # Installs both the data server and TUI launcher
-
 set -e
 
 REPO_DIR="/root/projects/cyberdeck"
@@ -9,6 +8,8 @@ SERVER_SERVICE="cyberdeck-server.service"
 TUI_SERVICE="cyberdeck-tui.service"
 SERVER_PORT="${CYBERDECK_PORT:-8765}"
 AUTH_TOKEN="${CYBERDECK_TOKEN:-}"
+PYTHON_BIN="${REPO_DIR}/server/.venv/bin/python"
+TUI_PYTHON="${REPO_DIR}/tui/.venv/bin/python"
 
 echo "==> Installing Cyberdeck systemd services..."
 
@@ -31,19 +32,22 @@ chmod 600 "$REPO_DIR/config/server.conf"
 cat > "/etc/systemd/system/$SERVER_SERVICE" << EOFSRV
 [Unit]
 Description=Cyberdeck Dashboard - Data Server
-After=network.target hermes.service
-Requires=hermes.service
+After=network.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=$REPO_DIR/server
-ExecStart=/root/.hermes/venv/bin/python server.py $SERVER_PORT $AUTH_TOKEN
+ExecStart=$PYTHON_BIN server.py
+Environment=PYTHONUNBUFFERED=1
+Environment=CYBERDECK_HOST=0.0.0.0
+Environment=CYBERDECK_PORT=$SERVER_PORT
+Environment=CYBERDECK_AUTH_TOKEN=$AUTH_TOKEN
+Environment=CYBERDECK_INTERVAL=2.0
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
@@ -61,7 +65,7 @@ Type=oneshot
 User=root
 WorkingDirectory=$REPO_DIR/tui
 ExecStartPre=/usr/bin/tmux new-session -d -s cyberdeck -x 120 -y 40
-ExecStart=/root/.hermes/venv/bin/python tui.py
+ExecStart=$TUI_PYTHON tui.py
 RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
@@ -83,4 +87,4 @@ echo "TUI tmux session: tmux attach -t cyberdeck"
 echo "Auth token saved to: $REPO_DIR/config/server.conf"
 echo ""
 echo "To set a custom port: CYBERDECK_PORT=8888 ./install.sh"
-echo "To set a custom token: CYBERDECK_TOKEN=mysecret ./install.sh"
+echo "To set a custom token: CYBERDECK_TOKEN=<token> ./install.sh"
