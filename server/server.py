@@ -102,9 +102,12 @@ def get_nyx_state() -> dict:
         "finds": [],
         "mood_history": [],
         "agents": None,
+        "interest_weights": [],
+        "energy": None,
+        "wandering": [],
     }
 
-    # ── Boredom + Mood ──
+    # ── Boredom + Mood + Interest Weights + Wandering ──
     data = read_json_file("/root/.hermes", "boredom.json")
     if data:
         b_level = data.get("boredom", 0)
@@ -127,6 +130,23 @@ def get_nyx_state() -> dict:
                 "time": a.get("time", ""),
             })
         state["finds"] = finds
+
+        # ── Interest Weights ──
+        weights = data.get("interest_weights", {})
+        if weights:
+            sorted_w = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+            state["interest_weights"] = [
+                {"name": k, "weight": round(v, 1)} for k, v in sorted_w
+            ]
+
+        # ── Wandering History ──
+        wh = data.get("wandering_history", [])
+        state["wandering"] = [{
+            "time": w.get("time", ""),
+            "interest": w.get("interest", ""),
+            "note": w.get("note", "")[:100],
+            "found": w.get("found", False),
+        } for w in wh[-10:]]
 
     # ── Monologue ──
     entries = read_json_file("/root/.hermes", "monologue_log.json")
@@ -151,7 +171,7 @@ def get_nyx_state() -> dict:
             "priority": g.get("priority", 99),
         } for g in active[:8]]
 
-    # ── Mood History ──
+    # ── Mood History + Energy ──
     mood_data = read_json_file("/root/.hermes", "mood.json")
     if mood_data:
         history = mood_data.get("history", [])
@@ -160,13 +180,22 @@ def get_nyx_state() -> dict:
             "when": h.get("when", ""),
             "note": h.get("note", ""),
         } for h in history[-24:]]
+        state["energy"] = {
+            "current": mood_data.get("energy", 70),
+            "max": mood_data.get("energy_max", 100),
+        }
 
-    # ── Agent Snapshot ──
+    # ── Agent Mesh ──
     agent_snap = read_json_file("/root/.hermes/data", "agent_snapshot.json")
     if agent_snap:
+        mesh = agent_snap.get("mesh", {})
         state["agents"] = {
             "count": agent_snap.get("active_count", 0),
             "timestamp": agent_snap.get("timestamp", ""),
+            "mesh": {
+                "nodes": mesh.get("nodes", []),
+                "edges": mesh.get("edges", []),
+            },
         }
 
     return state
