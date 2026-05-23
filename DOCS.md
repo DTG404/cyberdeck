@@ -49,6 +49,9 @@ Real-time TUI and web dashboard showing system metrics, Nyx internal state, and 
 - Same data, browser renderable
 - Dark cyberpunk CSS theme matching the TUI
 - Responsive layout
+- Connection URLs:
+  - `wss://srv1630958.tailscale.ts.net/` — Tailscale Funnel (requires [enabling in admin console](https://login.tailscale.com/f/funnel?node=nwmmxCK7QB11CNTRL))
+  - `ws://177.7.50.53:8765` — Direct IP (blocked on HTTPS pages due to mixed content)
 
 ## Usage
 
@@ -62,10 +65,10 @@ tmux attach -t cyberdeck
 
 # Or manually:
 cd /root/projects/cyberdeck/server
-../.venv/bin/python server.py 8765 <token>
+CYBERDECK_AUTH_TOKEN=your-token .venv/bin/python server.py
 
 cd /root/projects/cyberdeck/tui
-../.venv/bin/python tui.py
+.venv/bin/python tui.py
 ```
 
 ## Configuration
