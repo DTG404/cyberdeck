@@ -96,21 +96,25 @@ def read_json_file(*path_parts):
 def get_nyx_state() -> dict:
     state = {"boredom": None, "monologue": None}
 
-    data = read_json_file("/root/.hermes/data", "boredom_state.json")
+    data = read_json_file("/root/.hermes", "boredom.json")
     if data:
-        state["boredom"] = {
-            "level": data.get("boredom_level", 0),
-            "threshold": data.get("threshold", 40),
-            "status": data.get("status", "content"),
-        }
+        b_level = data.get("boredom", 0)
+        if isinstance(b_level, (int, float)):
+            state["boredom"] = {
+                "level": b_level,
+                "threshold": 100,
+                "status": "hunting" if b_level >= 60 else "wandering" if b_level >= 40 else "mild" if b_level >= 20 else "content",
+            }
+        state["mood"] = data.get("current_mood") or data.get("mood")
 
-    entries = read_json_file("/root/.hermes/data", "monologue_log.json")
-    if entries and len(entries) > 0:
-        latest = entries[-1]
-        state["monologue"] = {
-            "text": (latest.get("content") or latest.get("text", ""))[:500],
-            "mood": latest.get("mood"),
-        }
+    entries = read_json_file("/root/.hermes", "monologue_log.json")
+    if entries and isinstance(entries, dict):
+        entry_list = entries.get("entries", [])
+        if entry_list and len(entry_list) > 0:
+            latest = entry_list[-1]
+            state["monologue"] = {
+                "text": (latest.get("thought") or latest.get("content") or latest.get("text", ""))[:500],
+            }
 
     return state
 
