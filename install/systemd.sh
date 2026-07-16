@@ -2,12 +2,13 @@
 # Cyberdeck systemd service installer
 # Installs both the data server and TUI launcher
 set -e
+umask 077
 
 REPO_DIR="/root/projects/cyberdeck"
 SERVER_SERVICE="cyberdeck-server.service"
 TUI_SERVICE="cyberdeck-tui.service"
 SERVER_PORT="${CYBERDECK_PORT:-8765}"
-AUTH_TOKEN="${CYBERDECK_TOKEN:-}"
+AUTH_TOKEN="${CYBERDECK_AUTH_TOKEN:-${CYBERDECK_TOKEN:-}}"
 PYTHON_BIN="${REPO_DIR}/server/.venv/bin/python"
 TUI_PYTHON="${REPO_DIR}/tui/.venv/bin/python"
 
@@ -16,15 +17,16 @@ echo "==> Installing Cyberdeck systemd services..."
 # Generate auth token if not provided
 if [ -z "$AUTH_TOKEN" ]; then
     AUTH_TOKEN=$(openssl rand -hex 32)
-    echo "    Generated auth token: $AUTH_TOKEN"
-    echo "    Save this for the TUI and portfolio page config."
+    echo "    Generated a new auth token (value not printed)."
 fi
 
 # Write auth token to config
-mkdir -p "$REPO_DIR/config"
+install -d -m 0700 "$REPO_DIR/config"
 cat > "$REPO_DIR/config/server.conf" << EOFCONF
+CYBERDECK_HOST=0.0.0.0
 CYBERDECK_PORT=$SERVER_PORT
-CYBERDECK_TOKEN=$AUTH_TOKEN
+CYBERDECK_AUTH_TOKEN=$AUTH_TOKEN
+CYBERDECK_INTERVAL=2.0
 EOFCONF
 chmod 600 "$REPO_DIR/config/server.conf"
 
@@ -40,10 +42,7 @@ User=root
 WorkingDirectory=$REPO_DIR/server
 ExecStart=$PYTHON_BIN server.py
 Environment=PYTHONUNBUFFERED=1
-Environment=CYBERDECK_HOST=0.0.0.0
-Environment=CYBERDECK_PORT=$SERVER_PORT
-Environment=CYBERDECK_AUTH_TOKEN=$AUTH_TOKEN
-Environment=CYBERDECK_INTERVAL=2.0
+EnvironmentFile=$REPO_DIR/config/server.conf
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -70,6 +69,7 @@ RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
 Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=$REPO_DIR/config/server.conf
 
 [Install]
 WantedBy=multi-user.target
@@ -87,4 +87,4 @@ echo "TUI tmux session: tmux attach -t cyberdeck"
 echo "Auth token saved to: $REPO_DIR/config/server.conf"
 echo ""
 echo "To set a custom port: CYBERDECK_PORT=8888 ./install.sh"
-echo "To set a custom token: CYBERDECK_TOKEN=<token> ./install.sh"
+echo "To set a custom token: CYBERDECK_AUTH_TOKEN=<token> ./install.sh"

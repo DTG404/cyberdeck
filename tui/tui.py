@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import socket
 import time
 
@@ -22,6 +23,8 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.widgets import DataTable, Label, ProgressBar, RichLog, Static, Widget
+
+AUTH_TOKEN = os.environ.get("CYBERDECK_AUTH_TOKEN", "")
 
 # ── Colour Palette ──────────────────────────────────────────────────────────
 # Dark neon on black: cyan primary, amber accents, magenta for Nyx/status.
@@ -253,8 +256,7 @@ class CyberdeckTUI(App):
         while True:
             try:
                 async with websockets.connect(uri) as ws:
-                    # Authenticate with empty token
-                    await ws.send(json.dumps({"token": ""}))
+                    await ws.send(json.dumps({"token": AUTH_TOKEN}))
                     self.connected = True
                     self._reconnect_delay = 1.0
                     self._update_connection_status()
