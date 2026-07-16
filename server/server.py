@@ -255,6 +255,9 @@ async def broadcaster():
 
 
 async def main():
+    if not AUTH_TOKEN:
+        raise RuntimeError("CYBERDECK_AUTH_TOKEN is required; refusing to start without authentication")
+
     loop = asyncio.get_running_loop()
     stop = asyncio.Future()
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -266,8 +269,9 @@ async def main():
         log(f"Broadcast every {BROADCAST_INTERVAL}s")
 
         async with asyncio.TaskGroup() as tg:
-            tg.create_task(broadcaster())
+            broadcast_task = tg.create_task(broadcaster())
             await stop
+            broadcast_task.cancel()
 
     log("Shutting down.")
 
